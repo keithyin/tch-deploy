@@ -12,7 +12,7 @@ class Model(nn.Module):
 
     def forward(self, batch_feature, batch_length):
         x = nn.utils.rnn.pack_padded_sequence(
-            batch_feature, batch_length, True, enforce_sorted=False
+            batch_feature, batch_length, True, enforce_sorted=True
         )
         x, _ = self.bigru(x)
         x, _ = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
@@ -25,10 +25,22 @@ class Model(nn.Module):
 if __name__ == "__main__":
     model = Model()
     example = torch.rand(2, 10, 10)
-    example_lengths = torch.tensor([8, 10])
+    example_lengths = torch.tensor([10, 8])
 
     # 跟踪模型
     traced_script_module = torch.jit.trace(model, [example, example_lengths])
 
     # 保存模型
     traced_script_module.save("traced_model.pt")
+    torch.onnx.export(
+        model,
+        (example, example_lengths),
+        input_names=["feat", "len"],
+        output_names=["prob"],
+        dynamic_axes={
+            "feat": {0: "batch", 1: "sequence"},
+            "len": {0: "batch"},
+            "prob": {0: "batch"},
+        },
+        f="model.onnx",
+    )
