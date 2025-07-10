@@ -5,5 +5,5 @@ edition = "2021"
 
 [dependencies]
 tch="0.16.0"
-ort = {version="=2.0.0-rc.9", features=["cuda"]}
+ort = {version="=2.0.0-rc.9", features=["cuda", "tensorrt"]}
 ndarray = "0.16"
