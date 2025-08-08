@@ -1,6 +1,9 @@
+use flate2;
+use std::fs;
 use std::time::Instant;
-
 use tch;
+
+pub mod rayon_demos;
 
 use ort::{
     execution_providers::{CUDAExecutionProvider, TensorRTExecutionProvider},
@@ -13,9 +16,19 @@ fn tch_init() {
     tch::set_num_threads(1); //for throughput
 }
 
-fn tch_demo() {
-    let pt_path = "/root/projects/tch-deploy/model.torchscript";
-    let device = tch::Device::Cuda(0);
+fn tch_fp32() {
+    let nn_model_path = "/root/models/2025Q3-cnn-dw-residual-nobias-stage1-v3-data-epo17.tar.gz";
+    let tmp_dir = tempfile::tempdir().unwrap();
+    let tmp_dir_path = tmp_dir.path().to_path_buf();
+    let tar_gz_file =
+        fs::File::open(nn_model_path).expect(&format!("model not found: {}", nn_model_path));
+    let tar_file = flate2::read::GzDecoder::new(tar_gz_file);
+    let mut archive = tar::Archive::new(tar_file);
+    archive.unpack(tmp_dir_path.to_str().unwrap()).unwrap();
+
+    let pt_path = tmp_dir_path.join("model");
+
+    let device = tch::Device::Cuda(3);
     let mut model = tch::CModule::load_on_device(pt_path, device).unwrap();
     model.set_eval();
     let mut result = 0.0;
@@ -72,8 +85,18 @@ fn tch_demo() {
 }
 
 fn tch_half() {
-    let pt_path = "/root/projects/tch-deploy/model.torchscript.half";
-    let device = tch::Device::Cuda(0);
+    let nn_model_path = "/root/models/2025Q3-cnn-dw-residual-nobias-stage1-v3-data-epo17-fp16.tar.gz";
+    let tmp_dir = tempfile::tempdir().unwrap();
+    let tmp_dir_path = tmp_dir.path().to_path_buf();
+    let tar_gz_file =
+        fs::File::open(nn_model_path).expect(&format!("model not found: {}", nn_model_path));
+    let tar_file = flate2::read::GzDecoder::new(tar_gz_file);
+    let mut archive = tar::Archive::new(tar_file);
+    archive.unpack(tmp_dir_path.to_str().unwrap()).unwrap();
+
+    let pt_path = tmp_dir_path.join("model");
+    let device = tch::Device::Cuda(3);
+
     let mut model = tch::CModule::load_on_device(pt_path, device).unwrap();
     model.set_eval();
     let mut result = 0.0;
@@ -214,7 +237,7 @@ fn ort_demo() {
 
 fn main() {
     tch_init();
-    // tch_demo();
+    tch_fp32();
     tch_half();
     // ort_demo();
     // tch_demo();
